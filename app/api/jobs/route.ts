@@ -1,5 +1,6 @@
-import { fetchJobApplications } from '@/lib/sheets';
+import { fetchJobApplications, appendJobApplication } from '@/lib/sheets';
 import { mockJobs } from '@/lib/mockData';
+import type { JobApplication } from '@/types';
 
 export async function GET() {
   try {
@@ -7,5 +8,18 @@ export async function GET() {
     return Response.json({ jobs, isDemo: false });
   } catch {
     return Response.json({ jobs: mockJobs, isDemo: true });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const job = (await request.json()) as JobApplication;
+    await appendJobApplication(job);
+    return Response.json({ success: true });
+  } catch (err) {
+    return Response.json(
+      { success: false, error: String(err) },
+      { status: 500 }
+    );
   }
 }

@@ -1,26 +1,33 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { Plus } from 'lucide-react';
 import type { JobApplication } from '@/types';
 import Header from './Header';
 import StatsGrid from './StatsGrid';
 import FilterBar from './FilterBar';
 import JobsTable from './JobsTable';
+import AddEntryModal from './AddEntryModal';
 
 interface DashboardProps {
   jobs: JobApplication[];
   isDemo: boolean;
 }
 
-export default function Dashboard({ jobs, isDemo }: DashboardProps) {
+export default function Dashboard({ jobs: serverJobs, isDemo }: DashboardProps) {
+  const [localAdditions, setLocalAdditions] = useState<JobApplication[]>([]);
+  const [modalOpen, setModalOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [contractFilter, setContractFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [sortField, setSortField] = useState<keyof JobApplication | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
+  // Merge server jobs with any locally-added entries
+  const allJobs = useMemo(() => [...serverJobs, ...localAdditions], [serverJobs, localAdditions]);
+
   const filteredJobs = useMemo(() => {
-    let result = [...jobs];
+    let result = [...allJobs];
 
     if (search) {
       const q = search.toLowerCase();
@@ -52,7 +59,7 @@ export default function Dashboard({ jobs, isDemo }: DashboardProps) {
     }
 
     return result;
-  }, [jobs, search, contractFilter, statusFilter, sortField, sortDir]);
+  }, [allJobs, search, contractFilter, statusFilter, sortField, sortDir]);
 
   function handleSort(field: keyof JobApplication) {
     if (sortField === field) {
@@ -63,17 +70,33 @@ export default function Dashboard({ jobs, isDemo }: DashboardProps) {
     }
   }
 
+  function handleAddJob(job: JobApplication) {
+    setLocalAdditions((prev) => [...prev, job]);
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header isDemo={isDemo} totalJobs={jobs.length} />
+      <Header isDemo={isDemo} totalJobs={allJobs.length} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Page heading */}
-        <div className="mb-7 animate-fade-in-up">
-          <h1 className="text-2xl font-bold text-slate-900">Job Applications</h1>
-          <p className="text-slate-500 text-sm mt-0.5">
-            {isDemo ? 'Showing demo data — connect your Google Sheet to see your applications' : 'Synced from your Google Sheet'}
-          </p>
+        {/* Page heading + Add button */}
+        <div className="mb-7 flex items-start justify-between animate-fade-in-up">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Job Applications</h1>
+            <p className="text-slate-500 text-sm mt-0.5">
+              {isDemo
+                ? 'Showing demo data — connect your Google Sheet to see your applications'
+                : 'Synced from your Google Sheet'}
+            </p>
+          </div>
+
+          <button
+            onClick={() => setModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white text-sm font-semibold rounded-xl shadow-sm shadow-indigo-200 transition-all active:scale-95"
+          >
+            <Plus size={15} strokeWidth={2.5} />
+            Add Application
+          </button>
         </div>
 
         {/* Demo banner */}
@@ -81,7 +104,7 @@ export default function Dashboard({ jobs, isDemo }: DashboardProps) {
           <div className="mb-6 animate-fade-in stagger-1 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-amber-800 text-sm flex items-start gap-2.5">
             <span className="mt-0.5 shrink-0 text-base">⚡</span>
             <span>
-              <strong>Demo Mode</strong> — This is sample data. Connect your Google Sheet to track real applications.{' '}
+              <strong>Demo Mode</strong> — This is sample data. New entries are saved to Google Sheets only when credentials are configured.{' '}
               <a href="#setup" className="underline underline-offset-2 hover:text-amber-900 transition-colors">
                 View setup guide ↓
               </a>
@@ -90,7 +113,7 @@ export default function Dashboard({ jobs, isDemo }: DashboardProps) {
         )}
 
         {/* Stats */}
-        <StatsGrid jobs={jobs} />
+        <StatsGrid jobs={allJobs} />
 
         {/* Filters */}
         <FilterBar
@@ -100,7 +123,7 @@ export default function Dashboard({ jobs, isDemo }: DashboardProps) {
           onContractFilter={setContractFilter}
           statusFilter={statusFilter}
           onStatusFilter={setStatusFilter}
-          jobs={jobs}
+          jobs={allJobs}
         />
 
         {/* Table */}
@@ -130,7 +153,7 @@ export default function Dashboard({ jobs, isDemo }: DashboardProps) {
                 </li>
                 <li className="flex gap-3">
                   <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">3</span>
-                  <span>Share your Google Sheet with the service account email (Viewer access).</span>
+                  <span>Share your Google Sheet with the service account email (<strong>Editor</strong> access for adding entries).</span>
                 </li>
                 <li className="flex gap-3">
                   <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">4</span>
@@ -158,6 +181,14 @@ GOOGLE_SHEETS_SPREADSHEET_ID=1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms`}
           </div>
         )}
       </main>
+
+      {/* Add entry modal */}
+      <AddEntryModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onAdd={handleAddJob}
+        nextNo={allJobs.length + 1}
+      />
     </div>
   );
 }

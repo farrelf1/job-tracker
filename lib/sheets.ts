@@ -1,23 +1,32 @@
 import { google } from 'googleapis';
 import type { JobApplication } from '@/types';
 
-export async function fetchJobApplications(): Promise<JobApplication[]> {
+function getAuth(scopes: string[]) {
   const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const privateKey = process.env.GOOGLE_PRIVATE_KEY;
-  const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
 
-  if (!clientEmail || !privateKey || !spreadsheetId) {
+  if (!clientEmail || !privateKey) {
     throw new Error('Google Sheets credentials not configured');
   }
 
-  const auth = new google.auth.GoogleAuth({
+  return new google.auth.GoogleAuth({
     credentials: {
       client_email: clientEmail,
       private_key: privateKey.replace(/\\n/g, '\n'),
     },
-    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+    scopes,
   });
+}
 
+function requireSpreadsheetId(): string {
+  const id = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
+  if (!id) throw new Error('GOOGLE_SHEETS_SPREADSHEET_ID not configured');
+  return id;
+}
+
+export async function fetchJobApplications(): Promise<JobApplication[]> {
+  const spreadsheetId = requireSpreadsheetId();
+  const auth = getAuth(['https://www.googleapis.com/auth/spreadsheets.readonly']);
   const sheets = google.sheets({ version: 'v4', auth });
 
   const { data } = await sheets.spreadsheets.values.get({
@@ -42,4 +51,31 @@ export async function fetchJobApplications(): Promise<JobApplication[]> {
       offer: row[9]?.toString().trim() || '',
       notes: row[10]?.toString().trim() || '',
     }));
+}
+
+export async function appendJobApplication(job: JobApplication): Promise<void> {
+  const spreadsheetId = requireSpreadsheetId();
+  const auth = getAuth(['https://www.googleapis.com/auth/spreadsheets']);
+  const sheets = google.sheets({ version: 'v4', auth });
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: 'A:K',
+    valueInputOption: 'USER_ENTERED',
+    requestBody: {
+      values: [[
+        job.no,
+        job.company,
+        job.roleTitle,
+        job.contract,
+        job.jobLink,
+        job.applicationDate,
+        job.response,
+        job.interviewStage,
+        job.interviewDetails,
+        job.offer,
+        job.notes,
+      ]],
+    },
+  });
 }

@@ -70,6 +70,7 @@ export default function StatsGrid({ jobs }: { jobs: JobApplication[] }) {
   const interviewing = jobs.filter((j) => {
     const r = j.response?.toLowerCase() ?? '';
     return (
+      r === 'passed screening' ||
       r.includes('interview') ||
       r.includes('phone') ||
       r.includes('screen') ||
@@ -82,8 +83,11 @@ export default function StatsGrid({ jobs }: { jobs: JobApplication[] }) {
     );
   }).length;
 
+  // Explicitly exclude "Rejection" from offer count
   const offers = jobs.filter((j) => {
-    return j.offer?.trim() || j.response?.toLowerCase().includes('offer');
+    const o = j.offer?.toLowerCase().trim() ?? '';
+    if (o === 'rejection') return false;
+    return o === 'accepted' || o === 'offering' || o.includes('offer');
   }).length;
 
   const stats: StatCardProps[] = [

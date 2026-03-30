@@ -10,12 +10,24 @@ function getConfig(status: string): BadgeConfig {
   if (!s || s === 'no response' || s === 'pending' || s === 'n/a') {
     return { label: s ? status : 'Pending', classes: 'bg-slate-100 text-slate-500' };
   }
-  if (s.includes('offer') || s === 'accepted') {
+
+  // New specific values
+  if (s === 'passed screening') {
+    return { label: status, classes: 'bg-sky-100 text-sky-700' };
+  }
+  if (s === 'interview') {
+    return { label: status, classes: 'bg-violet-100 text-violet-700' };
+  }
+
+  // Offer field values — Rejection is red, the rest are not shown in response badge
+  if (s.includes('offer') || s === 'accepted' || s === 'offering') {
     return { label: status, classes: 'bg-emerald-100 text-emerald-700' };
   }
   if (s.includes('reject') || s === 'unsuccessful' || s === 'declined') {
     return { label: status, classes: 'bg-red-100 text-red-600' };
   }
+
+  // Legacy / freeform values
   if (
     s.includes('interview') ||
     s.includes('1st') || s.includes('2nd') || s.includes('3rd') ||
