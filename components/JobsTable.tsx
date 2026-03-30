@@ -1,0 +1,248 @@
+'use client';
+
+import { Fragment, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowUpDown, ChevronDown, ChevronUp, ExternalLink, FileText, CalendarDays } from 'lucide-react';
+import type { JobApplication } from '@/types';
+import StatusBadge from './StatusBadge';
+import ContractBadge from './ContractBadge';
+
+interface Props {
+  jobs: JobApplication[];
+  sortField: keyof JobApplication | null;
+  sortDir: 'asc' | 'desc';
+  onSort: (field: keyof JobApplication) => void;
+}
+
+function SortIcon({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
+  return (
+    <ArrowUpDown
+      size={12}
+      className={`ml-1 transition-opacity ${active ? 'opacity-100 text-indigo-500' : 'opacity-25'}`}
+    />
+  );
+}
+
+function Th({
+  children,
+  field,
+  active,
+  dir,
+  onSort,
+  className = '',
+}: {
+  children: React.ReactNode;
+  field?: keyof JobApplication;
+  active?: boolean;
+  dir?: 'asc' | 'desc';
+  onSort?: (f: keyof JobApplication) => void;
+  className?: string;
+}) {
+  return (
+    <th
+      className={`px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap ${field ? 'cursor-pointer select-none hover:text-slate-800 transition-colors' : ''} ${className}`}
+      onClick={() => field && onSort?.(field)}
+    >
+      <span className="flex items-center">
+        {children}
+        {field && <SortIcon active={!!active} dir={dir ?? 'asc'} />}
+      </span>
+    </th>
+  );
+}
+
+export default function JobsTable({ jobs, sortField, sortDir, onSort }: Props) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  function rowId(job: JobApplication) {
+    return `${job.no}-${job.company}-${job.roleTitle}`;
+  }
+
+  if (jobs.length === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="bg-white rounded-2xl border border-slate-100 shadow-sm p-16 text-center"
+      >
+        <FileText size={32} className="text-slate-300 mx-auto mb-3" />
+        <p className="text-slate-400 font-medium">No applications match your filters</p>
+        <p className="text-slate-300 text-sm mt-1">Try adjusting your search or clearing filters</p>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.25 }}
+      className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
+    >
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-100 bg-slate-50/70">
+              <Th className="w-12 pl-5">#</Th>
+              <Th field="company" active={sortField === 'company'} dir={sortDir} onSort={onSort}>
+                Company
+              </Th>
+              <Th field="roleTitle" active={sortField === 'roleTitle'} dir={sortDir} onSort={onSort}>
+                Role
+              </Th>
+              <Th>Type</Th>
+              <Th
+                field="applicationDate"
+                active={sortField === 'applicationDate'}
+                dir={sortDir}
+                onSort={onSort}
+              >
+                Applied
+              </Th>
+              <Th field="response" active={sortField === 'response'} dir={sortDir} onSort={onSort}>
+                Response
+              </Th>
+              <Th>Interview Stage</Th>
+              <Th>Offer</Th>
+              <Th className="w-10 pr-4">&nbsp;</Th>
+            </tr>
+          </thead>
+          <tbody>
+            <AnimatePresence mode="popLayout" initial={false}>
+              {jobs.map((job, i) => {
+                const id = rowId(job);
+                const isExpanded = expandedId === id;
+                const hasDetail = !!(job.interviewDetails?.trim() || job.notes?.trim());
+
+                return (
+                  <Fragment key={id}>
+                    <motion.tr
+                      layout
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, x: -8 }}
+                      transition={{ duration: 0.2, delay: Math.min(i * 0.035, 0.4) }}
+                      onClick={() => hasDetail && setExpandedId(isExpanded ? null : id)}
+                      className={`border-b border-slate-50 transition-colors group
+                        ${hasDetail ? 'cursor-pointer' : ''}
+                        ${isExpanded ? 'bg-indigo-50/40' : 'hover:bg-slate-50/60'}`}
+                    >
+                      <td className="px-4 py-3.5 pl-5 text-slate-400 text-xs tabular-nums">{job.no}</td>
+
+                      <td className="px-4 py-3.5">
+                        <span className="font-semibold text-slate-900">{job.company}</span>
+                      </td>
+
+                      <td className="px-4 py-3.5 text-slate-600 max-w-48">
+                        <span className="line-clamp-1">{job.roleTitle}</span>
+                      </td>
+
+                      <td className="px-4 py-3.5">
+                        <ContractBadge contract={job.contract} />
+                      </td>
+
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        <span className="flex items-center gap-1.5 text-slate-500 text-xs">
+                          <CalendarDays size={12} className="text-slate-400" />
+                          {job.applicationDate || '—'}
+                        </span>
+                      </td>
+
+                      <td className="px-4 py-3.5">
+                        <StatusBadge status={job.response} />
+                      </td>
+
+                      <td className="px-4 py-3.5">
+                        {job.interviewStage ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-violet-50 text-violet-700 whitespace-nowrap">
+                            {job.interviewStage}
+                          </span>
+                        ) : (
+                          <span className="text-slate-300 text-xs">—</span>
+                        )}
+                      </td>
+
+                      <td className="px-4 py-3.5">
+                        {job.offer ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 whitespace-nowrap">
+                            {job.offer}
+                          </span>
+                        ) : (
+                          <span className="text-slate-300 text-xs">—</span>
+                        )}
+                      </td>
+
+                      <td className="px-4 py-3.5 pr-5">
+                        <div className="flex items-center justify-end gap-2">
+                          {job.jobLink && (
+                            <a
+                              href={job.jobLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-slate-300 hover:text-indigo-500 transition-colors"
+                              title="View job posting"
+                            >
+                              <ExternalLink size={13} />
+                            </a>
+                          )}
+                          {hasDetail && (
+                            <span className="text-slate-300 group-hover:text-slate-400 transition-colors">
+                              {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </motion.tr>
+
+                    {/* Expanded detail row */}
+                    <AnimatePresence>
+                      {isExpanded && hasDetail && (
+                        <motion.tr
+                          key={`${id}-detail`}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.18 }}
+                        >
+                          <td colSpan={9} className="bg-indigo-50/20 border-b border-indigo-100/60 px-8 py-5">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                              {job.interviewDetails && (
+                                <div>
+                                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+                                    Interview Details
+                                  </p>
+                                  <p className="text-sm text-slate-700 leading-relaxed">{job.interviewDetails}</p>
+                                </div>
+                              )}
+                              {job.notes && (
+                                <div>
+                                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+                                    Notes
+                                  </p>
+                                  <p className="text-sm text-slate-600 leading-relaxed">{job.notes}</p>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </motion.tr>
+                      )}
+                    </AnimatePresence>
+                  </Fragment>
+                );
+              })}
+            </AnimatePresence>
+          </tbody>
+        </table>
+      </div>
+
+      {/* Footer */}
+      <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+        <p className="text-xs text-slate-400">
+          {jobs.length} application{jobs.length !== 1 ? 's' : ''}
+        </p>
+        <p className="text-xs text-slate-300 hidden sm:block">Click a row to expand details</p>
+      </div>
+    </motion.div>
+  );
+}
