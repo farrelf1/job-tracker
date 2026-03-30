@@ -2,7 +2,7 @@
 
 import { Fragment, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowUpDown, ChevronDown, ChevronUp, ExternalLink, FileText, CalendarDays } from 'lucide-react';
+import { ArrowUpDown, ChevronDown, ChevronUp, ExternalLink, FileText, CalendarDays, Pencil } from 'lucide-react';
 import type { JobApplication } from '@/types';
 import StatusBadge from './StatusBadge';
 import ContractBadge from './ContractBadge';
@@ -12,6 +12,7 @@ interface Props {
   sortField: keyof JobApplication | null;
   sortDir: 'asc' | 'desc';
   onSort: (field: keyof JobApplication) => void;
+  onEdit?: (job: JobApplication) => void;
 }
 
 function SortIcon({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
@@ -51,7 +52,7 @@ function Th({
   );
 }
 
-export default function JobsTable({ jobs, sortField, sortDir, onSort }: Props) {
+export default function JobsTable({ jobs, sortField, sortDir, onSort, onEdit }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   function rowId(job: JobApplication) {
@@ -164,7 +165,11 @@ export default function JobsTable({ jobs, sortField, sortDir, onSort }: Props) {
 
                       <td className="px-4 py-3.5">
                         {job.offer ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold whitespace-nowrap ${
+                            job.offer.toLowerCase() === 'rejection'
+                              ? 'bg-red-100 text-red-600'
+                              : 'bg-emerald-50 text-emerald-700'
+                          }`}>
                             {job.offer}
                           </span>
                         ) : (
@@ -185,6 +190,16 @@ export default function JobsTable({ jobs, sortField, sortDir, onSort }: Props) {
                             >
                               <ExternalLink size={13} />
                             </a>
+                          )}
+                          {onEdit && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); onEdit(job); }}
+                              className="text-slate-300 hover:text-indigo-500 transition-colors opacity-0 group-hover:opacity-100"
+                              title="Edit"
+                            >
+                              <Pencil size={13} />
+                            </button>
                           )}
                           {hasDetail && (
                             <span className="text-slate-300 group-hover:text-slate-400 transition-colors">

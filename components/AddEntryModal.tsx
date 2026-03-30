@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, Pencil } from 'lucide-react';
 import type { JobApplication } from '@/types';
 
 const CONTRACT_OPTIONS = ['Full Time', 'Intern', 'Contract'] as const;
@@ -15,6 +15,8 @@ interface AddEntryModalProps {
   onClose: () => void;
   onAdd: (job: JobApplication) => void;
   nextNo: number;
+  editJob?: JobApplication;
+  onSave?: (job: JobApplication) => void;
 }
 
 interface FormState {
@@ -39,6 +41,17 @@ function toSheetDate(iso: string): string {
   if (!iso) return '';
   const [y, m, d] = iso.split('-');
   return `${d}/${m}/${y.slice(2)}`;
+}
+
+function fromSheetDate(ddmmyy: string): string {
+  if (!ddmmyy) return todayISO();
+  const parts = ddmmyy.split('/');
+  if (parts.length === 3) {
+    const [d, m, y] = parts;
+    const year = y.length === 2 ? `20${y}` : y;
+    return `${year}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+  return todayISO();
 }
 
 const EMPTY: FormState = {
@@ -79,16 +92,35 @@ function Field({
   );
 }
 
-export default function AddEntryModal({ isOpen, onClose, onAdd, nextNo }: AddEntryModalProps) {
+export default function AddEntryModal({ isOpen, onClose, onAdd, nextNo, editJob, onSave }: AddEntryModalProps) {
+  const isEditMode = !!editJob;
   const [form, setForm] = useState<FormState>(EMPTY);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && editJob) {
+      setForm({
+        company: editJob.company,
+        roleTitle: editJob.roleTitle,
+        contract: editJob.contract || 'Full Time',
+        jobLink: editJob.jobLink,
+        applicationDate: fromSheetDate(editJob.applicationDate),
+        response: editJob.response,
+        interviewStage: editJob.interviewStage,
+        interviewDetails: editJob.interviewDetails,
+        offer: editJob.offer,
+        notes: editJob.notes,
+      });
+    } else if (isOpen) {
+      setForm(EMPTY);
+    }
+  }, [isOpen, editJob]);
 
   function set(key: keyof FormState, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
   function handleClose() {
-    setForm(EMPTY);
     onClose();
   }
 
@@ -99,7 +131,7 @@ export default function AddEntryModal({ isOpen, onClose, onAdd, nextNo }: AddEnt
     setLoading(true);
 
     const job: JobApplication = {
-      no: String(nextNo),
+      no: isEditMode ? editJob!.no : String(nextNo),
       company: form.company.trim(),
       roleTitle: form.roleTitle.trim(),
       contract: form.contract,
@@ -112,19 +144,21 @@ export default function AddEntryModal({ isOpen, onClose, onAdd, nextNo }: AddEnt
       notes: form.notes.trim(),
     };
 
-    // Attempt to persist to Google Sheets (silently fails in demo mode)
     try {
       await fetch('/api/jobs', {
-        method: 'POST',
+        method: isEditMode ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(job),
       });
     } catch {
-      // noop — entry still added to local state
+      // noop — local state still updated
     }
 
-    onAdd(job);
-    setForm(EMPTY);
+    if (isEditMode) {
+      onSave?.(job);
+    } else {
+      onAdd(job);
+    }
     setLoading(false);
     onClose();
   }
@@ -155,9 +189,14 @@ export default function AddEntryModal({ isOpen, onClose, onAdd, nextNo }: AddEnt
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-6 h-6 rounded-md bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm">
-                  <Plus size={13} className="text-white" strokeWidth={2.5} />
+                  {isEditMode
+                    ? <Pencil size={12} className="text-white" strokeWidth={2.5} />
+                    : <Plus size={13} className="text-white" strokeWidth={2.5} />
+                  }
                 </div>
-                <h2 className="font-semibold text-slate-900">Add Application</h2>
+                <h2 className="font-semibold text-slate-900">
+                  {isEditMode ? 'Edit Application' : 'Add Application'}
+                </h2>
               </div>
               <button
                 type="button"
@@ -301,7 +340,7 @@ export default function AddEntryModal({ isOpen, onClose, onAdd, nextNo }: AddEnt
                   disabled={loading || !form.company.trim() || !form.roleTitle.trim()}
                   className="flex-1 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                 >
-                  {loading ? 'Saving…' : 'Add Application'}
+                  {loading ? 'Saving…' : isEditMode ? 'Save Changes' : 'Add Application'}
                 </button>
               </div>
             </form>

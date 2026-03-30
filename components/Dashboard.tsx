@@ -16,15 +16,20 @@ interface DashboardProps {
 
 export default function Dashboard({ jobs: serverJobs, isDemo }: DashboardProps) {
   const [localAdditions, setLocalAdditions] = useState<JobApplication[]>([]);
+  const [localEdits, setLocalEdits] = useState<Record<string, JobApplication>>({});
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingJob, setEditingJob] = useState<JobApplication | null>(null);
   const [search, setSearch] = useState('');
   const [contractFilter, setContractFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [sortField, setSortField] = useState<keyof JobApplication | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
-  // Merge server jobs with any locally-added entries
-  const allJobs = useMemo(() => [...serverJobs, ...localAdditions], [serverJobs, localAdditions]);
+  // Merge server jobs with locally-added/edited entries
+  const allJobs = useMemo(
+    () => [...serverJobs, ...localAdditions].map((j) => localEdits[j.no] ?? j),
+    [serverJobs, localAdditions, localEdits]
+  );
 
   const filteredJobs = useMemo(() => {
     let result = [...allJobs];
@@ -72,6 +77,11 @@ export default function Dashboard({ jobs: serverJobs, isDemo }: DashboardProps) 
 
   function handleAddJob(job: JobApplication) {
     setLocalAdditions((prev) => [...prev, job]);
+  }
+
+  function handleSaveEdit(updated: JobApplication) {
+    setLocalEdits((prev) => ({ ...prev, [updated.no]: updated }));
+    setEditingJob(null);
   }
 
   return (
@@ -132,6 +142,7 @@ export default function Dashboard({ jobs: serverJobs, isDemo }: DashboardProps) 
           sortField={sortField}
           sortDir={sortDir}
           onSort={handleSort}
+          onEdit={setEditingJob}
         />
 
         {/* Setup guide */}
@@ -182,12 +193,14 @@ GOOGLE_SHEETS_SPREADSHEET_ID=1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms`}
         )}
       </main>
 
-      {/* Add entry modal */}
+      {/* Add / Edit modal */}
       <AddEntryModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
+        isOpen={modalOpen || editingJob !== null}
+        onClose={() => { setModalOpen(false); setEditingJob(null); }}
         onAdd={handleAddJob}
         nextNo={allJobs.length + 1}
+        editJob={editingJob ?? undefined}
+        onSave={handleSaveEdit}
       />
     </div>
   );

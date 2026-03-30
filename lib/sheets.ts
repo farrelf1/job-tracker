@@ -53,6 +53,36 @@ export async function fetchJobApplications(): Promise<JobApplication[]> {
     }));
 }
 
+export async function updateJobApplication(job: JobApplication): Promise<void> {
+  const spreadsheetId = requireSpreadsheetId();
+  const auth = getAuth(['https://www.googleapis.com/auth/spreadsheets']);
+  const sheets = google.sheets({ version: 'v4', auth });
+
+  const { data } = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: 'A2:A1000',
+  });
+
+  const rows = (data.values ?? []) as string[][];
+  const rowIndex = rows.findIndex((r) => r[0]?.toString().trim() === job.no);
+  if (rowIndex === -1) throw new Error(`Job #${job.no} not found in spreadsheet`);
+
+  const sheetRow = rowIndex + 2; // +1 for 1-indexed, +1 for header row
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `A${sheetRow}:K${sheetRow}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: {
+      values: [[
+        job.no, job.company, job.roleTitle, job.contract, job.jobLink,
+        job.applicationDate, job.response, job.interviewStage,
+        job.interviewDetails, job.offer, job.notes,
+      ]],
+    },
+  });
+}
+
 export async function appendJobApplication(job: JobApplication): Promise<void> {
   const spreadsheetId = requireSpreadsheetId();
   const auth = getAuth(['https://www.googleapis.com/auth/spreadsheets']);
