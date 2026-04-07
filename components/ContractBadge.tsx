@@ -7,7 +7,7 @@ function getClasses(contract: string): string {
 
   if (c.includes('full')) return 'bg-indigo-100 text-indigo-700';
   if (c.includes('intern')) return 'bg-violet-100 text-violet-700';
-  if (c.includes('management trainee') || c.includes('mt')) return 'bg-amber-100 text-amber-700';
+  if (c === 'mt') return 'bg-amber-100 text-amber-700';
   if (c.includes('contract')) return 'bg-cyan-100 text-cyan-700';
   if (c.includes('part')) return 'bg-sky-100 text-sky-700';
   if (c.includes('freelance')) return 'bg-teal-100 text-teal-700';

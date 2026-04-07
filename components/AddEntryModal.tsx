@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Pencil } from 'lucide-react';
 import type { JobApplication } from '@/types';
 
-const CONTRACT_OPTIONS = ['Full Time', 'Intern', 'Contract', 'Management Trainee (MT)'] as const;
+const CONTRACT_OPTIONS = ['Full Time', 'Intern', 'Contract', 'MT'] as const;
 const RESPONSE_OPTIONS = ['', 'Passed Screening', 'Online Test', 'Interview'] as const;
 const INTERVIEW_STAGE_OPTIONS = ['', 'HR Interview', 'User Interview', 'Next Step'] as const;
 const OFFER_OPTIONS = ['', 'Offering', 'Accepted', 'Rejection'] as const;
