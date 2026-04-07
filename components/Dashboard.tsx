@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
 import type { JobApplication } from '@/types';
 import Header from './Header';
@@ -15,6 +15,7 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ jobs: serverJobs, isDemo }: DashboardProps) {
+  const [liveJobs, setLiveJobs] = useState<JobApplication[]>(serverJobs);
   const [localAdditions, setLocalAdditions] = useState<JobApplication[]>([]);
   const [localEdits, setLocalEdits] = useState<Record<string, JobApplication>>({});
   const [modalOpen, setModalOpen] = useState(false);
@@ -25,11 +26,29 @@ export default function Dashboard({ jobs: serverJobs, isDemo }: DashboardProps) 
   const [sortField, setSortField] = useState<keyof JobApplication | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
-  // Merge server jobs with locally-added/edited entries
-  const allJobs = useMemo(
-    () => [...serverJobs, ...localAdditions].map((j) => localEdits[j.no] ?? j),
-    [serverJobs, localAdditions, localEdits]
-  );
+  // Poll Google Sheets every 30s for live updates
+  useEffect(() => {
+    if (isDemo) return;
+    const fetchLive = async () => {
+      try {
+        const res = await fetch('/api/jobs');
+        if (res.ok) {
+          const { jobs } = await res.json();
+          setLiveJobs(jobs);
+        }
+      } catch { /* noop */ }
+    };
+    fetchLive(); // immediate on mount
+    const id = setInterval(fetchLive, 30_000);
+    return () => clearInterval(id);
+  }, [isDemo]);
+
+  // Merge live jobs with local additions, apply any local edits on top
+  const allJobs = useMemo(() => {
+    const liveNos = new Set(liveJobs.map((j) => j.no));
+    const dedupedAdditions = localAdditions.filter((j) => !liveNos.has(j.no));
+    return [...liveJobs, ...dedupedAdditions].map((j) => localEdits[j.no] ?? j);
+  }, [liveJobs, localAdditions, localEdits]);
 
   const filteredJobs = useMemo(() => {
     let result = [...allJobs];
@@ -82,6 +101,32 @@ export default function Dashboard({ jobs: serverJobs, isDemo }: DashboardProps) 
   function handleSaveEdit(updated: JobApplication) {
     setLocalEdits((prev) => ({ ...prev, [updated.no]: updated }));
     setEditingJob(null);
+  }
+
+  async function handleDeleteJob(no: string) {
+    if (isDemo) {
+      // Local-only: remove and renumber in-memory
+      const merged = [...liveJobs, ...localAdditions]
+        .filter((j) => j.no !== no)
+        .map((j, i) => ({ ...(localEdits[j.no] ?? j), no: String(i + 1) }));
+      setLiveJobs(merged);
+      setLocalAdditions([]);
+      setLocalEdits({});
+      return;
+    }
+    try {
+      await fetch(`/api/jobs?no=${encodeURIComponent(no)}`, { method: 'DELETE' });
+    } catch { /* noop */ }
+    // Re-fetch renumbered data from Sheets and clear local state
+    try {
+      const res = await fetch('/api/jobs');
+      if (res.ok) {
+        const { jobs } = await res.json();
+        setLiveJobs(jobs);
+        setLocalAdditions([]);
+        setLocalEdits({});
+      }
+    } catch { /* noop */ }
   }
 
   return (
@@ -143,6 +188,7 @@ export default function Dashboard({ jobs: serverJobs, isDemo }: DashboardProps) 
           sortDir={sortDir}
           onSort={handleSort}
           onEdit={setEditingJob}
+          onDelete={handleDeleteJob}
         />
 
         {/* Setup guide */}

@@ -1,4 +1,4 @@
-import { fetchJobApplications, appendJobApplication, updateJobApplication } from '@/lib/sheets';
+import { fetchJobApplications, appendJobApplication, updateJobApplication, deleteJobApplication } from '@/lib/sheets';
 import { mockJobs } from '@/lib/mockData';
 import type { JobApplication } from '@/types';
 
@@ -28,6 +28,21 @@ export async function PUT(request: Request) {
   try {
     const job = (await request.json()) as JobApplication;
     await updateJobApplication(job);
+    return Response.json({ success: true });
+  } catch (err) {
+    return Response.json(
+      { success: false, error: String(err) },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const no = searchParams.get('no');
+  if (!no) return Response.json({ success: false, error: 'no is required' }, { status: 400 });
+  try {
+    await deleteJobApplication(no);
     return Response.json({ success: true });
   } catch (err) {
     return Response.json(

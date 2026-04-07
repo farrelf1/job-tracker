@@ -53,6 +53,55 @@ export async function fetchJobApplications(): Promise<JobApplication[]> {
     }));
 }
 
+export async function deleteJobApplication(no: string): Promise<void> {
+  const spreadsheetId = requireSpreadsheetId();
+  const auth = getAuth(['https://www.googleapis.com/auth/spreadsheets']);
+  const sheets = google.sheets({ version: 'v4', auth });
+
+  // Find which data row has this no
+  const { data: colA } = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: 'A2:A1000',
+  });
+  const rows = (colA.values ?? []) as string[][];
+  const dataRowIndex = rows.findIndex((r) => r[0]?.toString().trim() === no);
+  if (dataRowIndex === -1) throw new Error(`Job #${no} not found`);
+
+  // Get the first sheet's internal sheetId (needed by batchUpdate)
+  const sheetInfo = await sheets.spreadsheets.get({
+    spreadsheetId,
+    fields: 'sheets.properties',
+  });
+  const sheetId = sheetInfo.data.sheets?.[0]?.properties?.sheetId ?? 0;
+
+  // Delete the row (header is sheet row 0, first data row is sheet row 1)
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [{
+        deleteDimension: {
+          range: { sheetId, dimension: 'ROWS', startIndex: dataRowIndex + 1, endIndex: dataRowIndex + 2 },
+        },
+      }],
+    },
+  });
+
+  // Renumber all remaining rows sequentially (1, 2, 3, …)
+  const { data: afterData } = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: 'A2:A1000',
+  });
+  const remaining = (afterData.values ?? []) as string[][];
+  if (remaining.length === 0) return;
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `A2:A${remaining.length + 1}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: remaining.map((_, i) => [String(i + 1)]) },
+  });
+}
+
 export async function updateJobApplication(job: JobApplication): Promise<void> {
   const spreadsheetId = requireSpreadsheetId();
   const auth = getAuth(['https://www.googleapis.com/auth/spreadsheets']);

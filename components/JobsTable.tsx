@@ -2,7 +2,7 @@
 
 import { Fragment, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowUpDown, ChevronDown, ChevronUp, ExternalLink, FileText, CalendarDays, Pencil } from 'lucide-react';
+import { ArrowUpDown, ChevronDown, ChevronUp, ExternalLink, FileText, CalendarDays, Pencil, Trash2, Check, X } from 'lucide-react';
 import type { JobApplication } from '@/types';
 import StatusBadge from './StatusBadge';
 import ContractBadge from './ContractBadge';
@@ -13,6 +13,7 @@ interface Props {
   sortDir: 'asc' | 'desc';
   onSort: (field: keyof JobApplication) => void;
   onEdit?: (job: JobApplication) => void;
+  onDelete?: (no: string) => void;
 }
 
 function SortIcon({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
@@ -52,8 +53,9 @@ function Th({
   );
 }
 
-export default function JobsTable({ jobs, sortField, sortDir, onSort, onEdit }: Props) {
+export default function JobsTable({ jobs, sortField, sortDir, onSort, onEdit, onDelete }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   function rowId(job: JobApplication) {
     return `${job.no}-${job.company}-${job.roleTitle}`;
@@ -201,6 +203,35 @@ export default function JobsTable({ jobs, sortField, sortDir, onSort, onEdit }: 
                               <Pencil size={13} />
                             </button>
                           )}
+                          {onDelete && pendingDeleteId === id ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setPendingDeleteId(null); }}
+                                className="text-slate-400 hover:text-slate-600 transition-colors"
+                                title="Cancel"
+                              >
+                                <X size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); onDelete(job.no); setPendingDeleteId(null); }}
+                                className="text-red-500 hover:text-red-600 transition-colors"
+                                title="Confirm delete"
+                              >
+                                <Check size={13} />
+                              </button>
+                            </>
+                          ) : onDelete ? (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setPendingDeleteId(id); }}
+                              className="text-slate-300 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                              title="Delete"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          ) : null}
                           {hasDetail && (
                             <span className="text-slate-300 group-hover:text-slate-400 transition-colors">
                               {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
