@@ -1,8 +1,11 @@
 'use client';
 
-import { Fragment, useState } from 'react';
+import { Fragment, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowUpDown, ChevronDown, ChevronUp, ExternalLink, FileText, CalendarDays, Pencil, Trash2, Check, X } from 'lucide-react';
+import {
+  ArrowUpDown, ChevronDown, ChevronUp, ExternalLink, FileText,
+  CalendarDays, Pencil, Trash2, Check, X,
+} from 'lucide-react';
 import type { JobApplication } from '@/types';
 import StatusBadge from './StatusBadge';
 import ContractBadge from './ContractBadge';
@@ -16,50 +19,82 @@ interface Props {
   onDelete?: (no: string) => void;
 }
 
-function SortIcon({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
+const COLS = ['no', 'roleTitle', 'company', 'contract', 'applicationDate', 'response', 'interviewStage', 'offer', 'actions'] as const;
+type ColKey = typeof COLS[number];
+
+const DEFAULT_WIDTHS: Record<ColKey, number> = {
+  no: 52,
+  roleTitle: 230,
+  company: 160,
+  contract: 120,
+  applicationDate: 110,
+  response: 140,
+  interviewStage: 150,
+  offer: 110,
+  actions: 96,
+};
+
+function SortIcon({ active }: { active: boolean }) {
   return (
     <ArrowUpDown
       size={12}
-      className={`ml-1 transition-opacity ${active ? 'opacity-100 text-indigo-500' : 'opacity-25'}`}
+      className={`ml-1 shrink-0 transition-opacity ${active ? 'opacity-100 text-indigo-500' : 'opacity-25'}`}
     />
   );
 }
 
-function Th({
-  children,
-  field,
-  active,
-  dir,
-  onSort,
-  className = '',
-}: {
-  children: React.ReactNode;
-  field?: keyof JobApplication;
-  active?: boolean;
-  dir?: 'asc' | 'desc';
-  onSort?: (f: keyof JobApplication) => void;
-  className?: string;
-}) {
+function ResizeHandle({ col, onStart }: { col: ColKey; onStart: (col: ColKey, e: React.MouseEvent) => void }) {
   return (
-    <th
-      className={`px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap ${field ? 'cursor-pointer select-none hover:text-slate-800 transition-colors' : ''} ${className}`}
-      onClick={() => field && onSort?.(field)}
+    <div
+      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize group/handle flex items-center justify-center z-10"
+      onMouseDown={(e) => { e.stopPropagation(); onStart(col, e); }}
     >
-      <span className="flex items-center">
-        {children}
-        {field && <SortIcon active={!!active} dir={dir ?? 'asc'} />}
-      </span>
-    </th>
+      <div className="w-px h-4 bg-slate-200 group-hover/handle:bg-indigo-400 group-hover/handle:h-full transition-all" />
+    </div>
   );
 }
 
 export default function JobsTable({ jobs, sortField, sortDir, onSort, onEdit, onDelete }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [colWidths, setColWidths] = useState<Record<ColKey, number>>(DEFAULT_WIDTHS);
+  const [isResizing, setIsResizing] = useState(false);
+  const resizingCol = useRef<ColKey | null>(null);
+  const resizeStartX = useRef(0);
+  const resizeStartWidth = useRef(0);
+
+  function startResize(col: ColKey, e: React.MouseEvent) {
+    e.preventDefault();
+    resizingCol.current = col;
+    resizeStartX.current = e.clientX;
+    resizeStartWidth.current = colWidths[col];
+    setIsResizing(true);
+
+    function onMouseMove(ev: MouseEvent) {
+      if (!resizingCol.current) return;
+      const delta = ev.clientX - resizeStartX.current;
+      setColWidths((prev) => ({
+        ...prev,
+        [resizingCol.current!]: Math.max(60, resizeStartWidth.current + delta),
+      }));
+    }
+
+    function onMouseUp() {
+      resizingCol.current = null;
+      setIsResizing(false);
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    }
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }
 
   function rowId(job: JobApplication) {
     return `${job.no}-${job.company}-${job.roleTitle}`;
   }
+
+  const totalWidth = COLS.reduce((sum, col) => sum + colWidths[col], 0);
 
   if (jobs.length === 0) {
     return (
@@ -82,34 +117,84 @@ export default function JobsTable({ jobs, sortField, sortDir, onSort, onEdit, on
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.25 }}
       className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
     >
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+      <div className={`overflow-x-auto ${isResizing ? 'cursor-col-resize select-none' : ''}`}>
+        <table
+          className="text-sm"
+          style={{ tableLayout: 'fixed', width: `${totalWidth}px` }}
+        >
+          <colgroup>
+            {COLS.map((col) => (
+              <col key={col} style={{ width: `${colWidths[col]}px` }} />
+            ))}
+          </colgroup>
+
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50/70">
-              <Th className="w-12 pl-5">#</Th>
-              <Th field="company" active={sortField === 'company'} dir={sortDir} onSort={onSort}>
-                Company
-              </Th>
-              <Th field="roleTitle" active={sortField === 'roleTitle'} dir={sortDir} onSort={onSort}>
-                Role
-              </Th>
-              <Th>Type</Th>
-              <Th
-                field="applicationDate"
-                active={sortField === 'applicationDate'}
-                dir={sortDir}
-                onSort={onSort}
+              {/* # */}
+              <th className="relative pl-5 pr-2 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                #
+                <ResizeHandle col="no" onStart={startResize} />
+              </th>
+
+              {/* Role Title (was second, now first data col) */}
+              <th
+                className="relative px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide cursor-pointer select-none hover:text-slate-800 transition-colors"
+                onClick={() => onSort('roleTitle')}
               >
-                Applied
-              </Th>
-              <Th field="response" active={sortField === 'response'} dir={sortDir} onSort={onSort}>
-                Response
-              </Th>
-              <Th>Interview Stage</Th>
-              <Th>Offer</Th>
-              <Th className="w-10 pr-4">&nbsp;</Th>
+                <span className="flex items-center">Role <SortIcon active={sortField === 'roleTitle'} /></span>
+                <ResizeHandle col="roleTitle" onStart={startResize} />
+              </th>
+
+              {/* Company */}
+              <th
+                className="relative px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide cursor-pointer select-none hover:text-slate-800 transition-colors"
+                onClick={() => onSort('company')}
+              >
+                <span className="flex items-center">Company <SortIcon active={sortField === 'company'} /></span>
+                <ResizeHandle col="company" onStart={startResize} />
+              </th>
+
+              {/* Type */}
+              <th className="relative px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                Type
+                <ResizeHandle col="contract" onStart={startResize} />
+              </th>
+
+              {/* Applied */}
+              <th
+                className="relative px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide cursor-pointer select-none hover:text-slate-800 transition-colors"
+                onClick={() => onSort('applicationDate')}
+              >
+                <span className="flex items-center">Applied <SortIcon active={sortField === 'applicationDate'} /></span>
+                <ResizeHandle col="applicationDate" onStart={startResize} />
+              </th>
+
+              {/* Response */}
+              <th
+                className="relative px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide cursor-pointer select-none hover:text-slate-800 transition-colors"
+                onClick={() => onSort('response')}
+              >
+                <span className="flex items-center">Response <SortIcon active={sortField === 'response'} /></span>
+                <ResizeHandle col="response" onStart={startResize} />
+              </th>
+
+              {/* Interview Stage */}
+              <th className="relative px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                Interview Stage
+                <ResizeHandle col="interviewStage" onStart={startResize} />
+              </th>
+
+              {/* Offer */}
+              <th className="relative px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                Offer
+                <ResizeHandle col="offer" onStart={startResize} />
+              </th>
+
+              {/* Actions */}
+              <th className="relative px-4 py-3">&nbsp;</th>
             </tr>
           </thead>
+
           <tbody>
             <AnimatePresence mode="popLayout" initial={false}>
               {jobs.map((job, i) => {
@@ -130,14 +215,20 @@ export default function JobsTable({ jobs, sortField, sortDir, onSort, onEdit, on
                         ${hasDetail ? 'cursor-pointer' : ''}
                         ${isExpanded ? 'bg-indigo-50/40' : 'hover:bg-slate-50/60'}`}
                     >
-                      <td className="px-4 py-3.5 pl-5 text-slate-400 text-xs tabular-nums">{job.no}</td>
+                      <td className="pl-5 pr-2 py-3.5 text-slate-400 text-xs tabular-nums">{job.no}</td>
 
-                      <td className="px-4 py-3.5">
-                        <span className="font-semibold text-slate-900">{job.company}</span>
+                      {/* Role Title — first now */}
+                      <td className="px-4 py-3.5 text-slate-700 overflow-hidden">
+                        <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={job.roleTitle}>
+                          {job.roleTitle}
+                        </span>
                       </td>
 
-                      <td className="px-4 py-3.5 text-slate-600 max-w-48">
-                        <span className="line-clamp-1">{job.roleTitle}</span>
+                      {/* Company — second now */}
+                      <td className="px-4 py-3.5 overflow-hidden">
+                        <span className="block font-semibold text-slate-900 overflow-hidden text-ellipsis whitespace-nowrap" title={job.company}>
+                          {job.company}
+                        </span>
                       </td>
 
                       <td className="px-4 py-3.5">
@@ -146,7 +237,7 @@ export default function JobsTable({ jobs, sortField, sortDir, onSort, onEdit, on
 
                       <td className="px-4 py-3.5 whitespace-nowrap">
                         <span className="flex items-center gap-1.5 text-slate-500 text-xs">
-                          <CalendarDays size={12} className="text-slate-400" />
+                          <CalendarDays size={12} className="text-slate-400 shrink-0" />
                           {job.applicationDate || '—'}
                         </span>
                       </td>
@@ -287,7 +378,7 @@ export default function JobsTable({ jobs, sortField, sortDir, onSort, onEdit, on
         <p className="text-xs text-slate-400">
           {jobs.length} application{jobs.length !== 1 ? 's' : ''}
         </p>
-        <p className="text-xs text-slate-300 hidden sm:block">Click a row to expand details</p>
+        <p className="text-xs text-slate-300 hidden sm:block">Drag column edges to resize · Click a row to expand details</p>
       </div>
     </motion.div>
   );

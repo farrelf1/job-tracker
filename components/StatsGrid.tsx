@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Briefcase, Clock, MessageSquare, Trophy } from 'lucide-react';
+import { Briefcase, Clock, MessageSquare, Trophy, XCircle } from 'lucide-react';
 import type { JobApplication } from '@/types';
 
 function useCounter(target: number, duration = 900) {
@@ -68,6 +68,8 @@ export default function StatsGrid({ jobs }: { jobs: JobApplication[] }) {
   }).length;
 
   const interviewing = jobs.filter((j) => {
+    // Rejected jobs should not count as in-progress
+    if (j.offer?.toLowerCase().trim() === 'rejection') return false;
     const r = j.response?.toLowerCase() ?? '';
     return (
       r === 'passed screening' ||
@@ -89,6 +91,8 @@ export default function StatsGrid({ jobs }: { jobs: JobApplication[] }) {
     if (o === 'rejection') return false;
     return o === 'accepted' || o === 'offering' || o.includes('offer');
   }).length;
+
+  const rejected = jobs.filter((j) => j.offer?.toLowerCase().trim() === 'rejection').length;
 
   const stats: StatCardProps[] = [
     {
@@ -127,10 +131,19 @@ export default function StatsGrid({ jobs }: { jobs: JobApplication[] }) {
       icon: <Trophy size={18} strokeWidth={2} />,
       delay: 0.21,
     },
+    {
+      label: 'Rejected',
+      value: rejected,
+      accentClass: 'bg-red-400',
+      iconBgClass: 'bg-red-50',
+      iconColorClass: 'text-red-500',
+      icon: <XCircle size={18} strokeWidth={2} />,
+      delay: 0.28,
+    },
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
       {stats.map((s) => (
         <StatCard key={s.label} {...s} />
       ))}
