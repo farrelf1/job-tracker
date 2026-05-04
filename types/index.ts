@@ -11,3 +11,12 @@ export interface JobApplication {
   offer: string;
   notes: string;
 }
+
+export interface SavedJob {
+  no: string;
+  roleTitle: string;
+  company: string;
+  contract: string;
+  jobLink: string;
+  notes: string;
+}

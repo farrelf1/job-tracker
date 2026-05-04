@@ -131,7 +131,7 @@ export default function Dashboard({ jobs: serverJobs, isDemo }: DashboardProps) 
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header isDemo={isDemo} totalJobs={allJobs.length} />
+      <Header isDemo={isDemo} totalCount={allJobs.length} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page heading + Add button */}

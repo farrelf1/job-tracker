@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-import type { JobApplication } from '@/types';
+import type { JobApplication, SavedJob } from '@/types';
 
 function getAuth(scopes: string[]) {
   const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
@@ -156,5 +156,126 @@ export async function appendJobApplication(job: JobApplication): Promise<void> {
         job.notes,
       ]],
     },
+  });
+}
+
+// ── Saved Vacancy sheet ──────────────────────────────────────────────────────
+
+const SAVED_RANGE_PREFIX = "'Saved Vacancy'";
+
+async function getSavedSheetId(
+  sheets: ReturnType<typeof google.sheets>,
+  spreadsheetId: string
+): Promise<number> {
+  const { data } = await sheets.spreadsheets.get({
+    spreadsheetId,
+    fields: 'sheets.properties',
+  });
+  const sheet = data.sheets?.find((s) => s.properties?.title === 'Saved Vacancy');
+  if (!sheet?.properties) throw new Error('Saved Vacancy sheet not found');
+  return sheet.properties.sheetId!;
+}
+
+export async function fetchSavedJobs(): Promise<SavedJob[]> {
+  const spreadsheetId = requireSpreadsheetId();
+  const auth = getAuth(['https://www.googleapis.com/auth/spreadsheets.readonly']);
+  const sheets = google.sheets({ version: 'v4', auth });
+
+  const { data } = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `${SAVED_RANGE_PREFIX}!A2:F1000`,
+  });
+
+  const rows = (data.values ?? []) as string[][];
+  return rows
+    .filter((row) => row.some((cell) => cell?.toString().trim()))
+    .map((row, index) => ({
+      no: row[0]?.toString().trim() || String(index + 1),
+      roleTitle: row[1]?.toString().trim() || '',
+      company: row[2]?.toString().trim() || '',
+      contract: row[3]?.toString().trim() || '',
+      jobLink: row[4]?.toString().trim() || '',
+      notes: row[5]?.toString().trim() || '',
+    }));
+}
+
+export async function appendSavedJob(job: SavedJob): Promise<void> {
+  const spreadsheetId = requireSpreadsheetId();
+  const auth = getAuth(['https://www.googleapis.com/auth/spreadsheets']);
+  const sheets = google.sheets({ version: 'v4', auth });
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: `${SAVED_RANGE_PREFIX}!A:F`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: {
+      values: [[job.no, job.roleTitle, job.company, job.contract, job.jobLink, job.notes]],
+    },
+  });
+}
+
+export async function updateSavedJob(job: SavedJob): Promise<void> {
+  const spreadsheetId = requireSpreadsheetId();
+  const auth = getAuth(['https://www.googleapis.com/auth/spreadsheets']);
+  const sheets = google.sheets({ version: 'v4', auth });
+
+  const { data } = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `${SAVED_RANGE_PREFIX}!A2:A1000`,
+  });
+  const rows = (data.values ?? []) as string[][];
+  const rowIndex = rows.findIndex((r) => r[0]?.toString().trim() === job.no);
+  if (rowIndex === -1) throw new Error(`Saved job #${job.no} not found`);
+
+  const sheetRow = rowIndex + 2;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `${SAVED_RANGE_PREFIX}!A${sheetRow}:F${sheetRow}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: {
+      values: [[job.no, job.roleTitle, job.company, job.contract, job.jobLink, job.notes]],
+    },
+  });
+}
+
+export async function deleteSavedJob(no: string): Promise<void> {
+  const spreadsheetId = requireSpreadsheetId();
+  const auth = getAuth(['https://www.googleapis.com/auth/spreadsheets']);
+  const sheets = google.sheets({ version: 'v4', auth });
+
+  const { data: colA } = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `${SAVED_RANGE_PREFIX}!A2:A1000`,
+  });
+  const rows = (colA.values ?? []) as string[][];
+  const dataRowIndex = rows.findIndex((r) => r[0]?.toString().trim() === no);
+  if (dataRowIndex === -1) throw new Error(`Saved job #${no} not found`);
+
+  const sheetId = await getSavedSheetId(sheets, spreadsheetId);
+
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [{
+        deleteDimension: {
+          range: { sheetId, dimension: 'ROWS', startIndex: dataRowIndex + 1, endIndex: dataRowIndex + 2 },
+        },
+      }],
+    },
+  });
+
+  // Renumber remaining rows
+  const { data: afterData } = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `${SAVED_RANGE_PREFIX}!A2:A1000`,
+  });
+  const remaining = (afterData.values ?? []) as string[][];
+  if (remaining.length === 0) return;
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `${SAVED_RANGE_PREFIX}!A2:A${remaining.length + 1}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: remaining.map((_, i) => [String(i + 1)]) },
   });
 }
