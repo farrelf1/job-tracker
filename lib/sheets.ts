@@ -183,7 +183,7 @@ export async function fetchSavedJobs(): Promise<SavedJob[]> {
 
   const { data } = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `${SAVED_RANGE_PREFIX}!A2:F1000`,
+    range: `${SAVED_RANGE_PREFIX}!A2:G1000`,
   });
 
   const rows = (data.values ?? []) as string[][];
@@ -196,6 +196,7 @@ export async function fetchSavedJobs(): Promise<SavedJob[]> {
       contract: row[3]?.toString().trim() || '',
       jobLink: row[4]?.toString().trim() || '',
       notes: row[5]?.toString().trim() || '',
+      deadline: row[6]?.toString().trim() || '',
     }));
 }
 
@@ -206,10 +207,10 @@ export async function appendSavedJob(job: SavedJob): Promise<void> {
 
   await sheets.spreadsheets.values.append({
     spreadsheetId,
-    range: `${SAVED_RANGE_PREFIX}!A:F`,
+    range: `${SAVED_RANGE_PREFIX}!A:G`,
     valueInputOption: 'USER_ENTERED',
     requestBody: {
-      values: [[job.no, job.roleTitle, job.company, job.contract, job.jobLink, job.notes]],
+      values: [[job.no, job.roleTitle, job.company, job.contract, job.jobLink, job.notes, job.deadline]],
     },
   });
 }
@@ -230,10 +231,10 @@ export async function updateSavedJob(job: SavedJob): Promise<void> {
   const sheetRow = rowIndex + 2;
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `${SAVED_RANGE_PREFIX}!A${sheetRow}:F${sheetRow}`,
+    range: `${SAVED_RANGE_PREFIX}!A${sheetRow}:G${sheetRow}`,
     valueInputOption: 'USER_ENTERED',
     requestBody: {
-      values: [[job.no, job.roleTitle, job.company, job.contract, job.jobLink, job.notes]],
+      values: [[job.no, job.roleTitle, job.company, job.contract, job.jobLink, job.notes, job.deadline]],
     },
   });
 }

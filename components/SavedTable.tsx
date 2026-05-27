@@ -3,8 +3,8 @@
 import { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowUpDown, ExternalLink, FileText,
-  Pencil, Trash2, Check, X, Bookmark,
+  ArrowUpDown, ExternalLink,
+  Pencil, Trash2, Check, X, Bookmark, CalendarDays,
 } from 'lucide-react';
 import type { SavedJob } from '@/types';
 import ContractBadge from './ContractBadge';
@@ -18,7 +18,7 @@ interface Props {
   onDelete?: (no: string) => void;
 }
 
-const COLS = ['no', 'roleTitle', 'company', 'contract', 'jobLink', 'notes', 'actions'] as const;
+const COLS = ['no', 'roleTitle', 'company', 'contract', 'jobLink', 'deadline', 'notes', 'actions'] as const;
 type ColKey = typeof COLS[number];
 
 const DEFAULT_WIDTHS: Record<ColKey, number> = {
@@ -27,7 +27,8 @@ const DEFAULT_WIDTHS: Record<ColKey, number> = {
   company: 170,
   contract: 120,
   jobLink: 160,
-  notes: 280,
+  deadline: 130,
+  notes: 260,
   actions: 80,
 };
 
@@ -139,6 +140,13 @@ export default function SavedTable({ jobs, sortField, sortDir, onSort, onEdit, o
               <th className="relative px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
                 Link<ResizeHandle col="jobLink" onStart={startResize} />
               </th>
+              <th
+                className="relative px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide cursor-pointer select-none hover:text-slate-800 transition-colors"
+                onClick={() => onSort('deadline')}
+              >
+                <span className="flex items-center">Deadline <SortIcon active={sortField === 'deadline'} /></span>
+                <ResizeHandle col="deadline" onStart={startResize} />
+              </th>
               <th className="relative px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
                 Notes<ResizeHandle col="notes" onStart={startResize} />
               </th>
@@ -192,6 +200,17 @@ export default function SavedTable({ jobs, sortField, sortDir, onSort, onEdit, o
                           <ExternalLink size={11} className="shrink-0" />
                           <span className="overflow-hidden text-ellipsis whitespace-nowrap">{job.jobLink.replace(/^https?:\/\//, '')}</span>
                         </a>
+                      ) : (
+                        <span className="text-slate-300 text-xs">—</span>
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                      {job.deadline ? (
+                        <span className="inline-flex items-center gap-1.5 text-slate-600 text-xs">
+                          <CalendarDays size={12} className="text-slate-400 shrink-0" />
+                          {job.deadline}
+                        </span>
                       ) : (
                         <span className="text-slate-300 text-xs">—</span>
                       )}

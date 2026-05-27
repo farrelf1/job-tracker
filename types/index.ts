@@ -18,5 +18,6 @@ export interface SavedJob {
   company: string;
   contract: string;
   jobLink: string;
+  deadline: string;
   notes: string;
 }

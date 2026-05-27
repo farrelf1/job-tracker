@@ -21,6 +21,7 @@ interface FormState {
   company: string;
   contract: string;
   jobLink: string;
+  deadline: string;
   notes: string;
 }
 
@@ -29,6 +30,7 @@ const EMPTY: FormState = {
   company: '',
   contract: 'Full Time',
   jobLink: '',
+  deadline: '',
   notes: '',
 };
 
@@ -61,6 +63,7 @@ export default function SavedEntryModal({ isOpen, onClose, onAdd, nextNo, editJo
         company: editJob.company,
         contract: editJob.contract || 'Full Time',
         jobLink: editJob.jobLink,
+        deadline: editJob.deadline || '',
         notes: editJob.notes,
       });
     } else if (isOpen) {
@@ -84,6 +87,7 @@ export default function SavedEntryModal({ isOpen, onClose, onAdd, nextNo, editJo
       company: form.company.trim(),
       contract: form.contract,
       jobLink: form.jobLink.trim(),
+      deadline: form.deadline,
       notes: form.notes.trim(),
     };
 
@@ -194,6 +198,15 @@ export default function SavedEntryModal({ isOpen, onClose, onAdd, nextNo, editJo
                     value={form.jobLink}
                     onChange={(e) => set('jobLink', e.target.value)}
                     placeholder="https://…"
+                    className={inputCls}
+                  />
+                </Field>
+
+                <Field label="Application Deadline">
+                  <input
+                    type="date"
+                    value={form.deadline}
+                    onChange={(e) => set('deadline', e.target.value)}
                     className={inputCls}
                   />
                 </Field>

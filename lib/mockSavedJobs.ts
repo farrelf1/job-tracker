@@ -7,6 +7,7 @@ export const mockSavedJobs: SavedJob[] = [
     company: 'Figma',
     contract: 'Full Time',
     jobLink: 'https://figma.com/careers',
+    deadline: '2026-06-30',
     notes: 'Dream role — check back monthly',
   },
   {
@@ -15,6 +16,7 @@ export const mockSavedJobs: SavedJob[] = [
     company: 'Stripe',
     contract: 'Intern',
     jobLink: 'https://stripe.com/jobs',
+    deadline: '2026-07-15',
     notes: 'Summer intake opens Q2',
   },
   {
@@ -23,6 +25,7 @@ export const mockSavedJobs: SavedJob[] = [
     company: 'HSBC',
     contract: 'MT',
     jobLink: '',
+    deadline: '',
     notes: 'Graduate scheme — applications open October',
   },
 ];
