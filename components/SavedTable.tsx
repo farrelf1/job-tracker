@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowUpDown, ExternalLink,
-  Pencil, Trash2, Check, X, Bookmark, CalendarDays,
+  Pencil, Trash2, Check, X, Bookmark, CalendarDays, Send,
 } from 'lucide-react';
 import type { SavedJob } from '@/types';
 import ContractBadge from './ContractBadge';
@@ -16,6 +16,7 @@ interface Props {
   onSort: (field: keyof SavedJob) => void;
   onEdit?: (job: SavedJob) => void;
   onDelete?: (no: string) => void;
+  onMoveToApplications?: (job: SavedJob) => void;
 }
 
 const COLS = ['no', 'roleTitle', 'company', 'contract', 'jobLink', 'deadline', 'notes', 'actions'] as const;
@@ -28,8 +29,8 @@ const DEFAULT_WIDTHS: Record<ColKey, number> = {
   contract: 120,
   jobLink: 160,
   deadline: 130,
-  notes: 260,
-  actions: 80,
+  notes: 240,
+  actions: 170,
 };
 
 function SortIcon({ active }: { active: boolean }) {
@@ -52,8 +53,9 @@ function ResizeHandle({ col, onStart }: { col: ColKey; onStart: (col: ColKey, e:
   );
 }
 
-export default function SavedTable({ jobs, sortField, sortDir, onSort, onEdit, onDelete }: Props) {
+export default function SavedTable({ jobs, sortField, sortDir, onSort, onEdit, onDelete, onMoveToApplications }: Props) {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [movingId, setMovingId] = useState<string | null>(null);
   const [colWidths, setColWidths] = useState<Record<ColKey, number>>(DEFAULT_WIDTHS);
   const [isResizing, setIsResizing] = useState(false);
   const resizingCol = useRef<ColKey | null>(null);
@@ -224,6 +226,25 @@ export default function SavedTable({ jobs, sortField, sortDir, onSort, onEdit, o
 
                     <td className="px-4 py-3.5 pr-5">
                       <div className="flex items-center justify-end gap-2">
+                        {onMoveToApplications && (
+                          <button
+                            type="button"
+                            disabled={movingId === id}
+                            onClick={async () => {
+                              setMovingId(id);
+                              try {
+                                await onMoveToApplications(job);
+                              } finally {
+                                setMovingId(null);
+                              }
+                            }}
+                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                            title="Mark as applied — moves this to your Applications"
+                          >
+                            <Send size={11} strokeWidth={2.5} />
+                            {movingId === id ? 'Moving…' : 'Apply'}
+                          </button>
+                        )}
                         {onEdit && (
                           <button
                             type="button"

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Bookmark, Search, X } from 'lucide-react';
-import type { SavedJob } from '@/types';
+import type { JobApplication, SavedJob } from '@/types';
 import Header from './Header';
 import SavedTable from './SavedTable';
 import SavedEntryModal from './SavedEntryModal';
@@ -94,6 +94,66 @@ export default function SavedDashboard({ jobs: serverJobs, isDemo, spreadsheetUr
   function handleSaveEdit(updated: SavedJob) {
     setLocalEdits((prev) => ({ ...prev, [updated.no]: updated }));
     setEditingJob(null);
+  }
+
+  async function handleMoveToApplications(job: SavedJob) {
+    const now = new Date();
+    const dd = String(now.getDate()).padStart(2, '0');
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const yy = String(now.getFullYear()).slice(2);
+    const applicationDate = `${dd}/${mm}/${yy}`;
+
+    if (isDemo) {
+      const merged = [...liveJobs, ...localAdditions]
+        .filter((j) => j.no !== job.no)
+        .map((j, i) => ({ ...(localEdits[j.no] ?? j), no: String(i + 1) }));
+      setLiveJobs(merged);
+      setLocalAdditions([]);
+      setLocalEdits({});
+      return;
+    }
+
+    let nextNo = '1';
+    try {
+      const res = await fetch('/api/jobs');
+      if (res.ok) {
+        const { jobs } = (await res.json()) as { jobs: JobApplication[] };
+        nextNo = String(jobs.length + 1);
+      }
+    } catch { /* noop */ }
+
+    const newApplication: JobApplication = {
+      no: nextNo,
+      company: job.company,
+      roleTitle: job.roleTitle,
+      contract: job.contract,
+      jobLink: job.jobLink,
+      applicationDate,
+      response: '',
+      interviewStage: '',
+      interviewDetails: '',
+      offer: '',
+      notes: job.notes,
+    };
+
+    try {
+      await fetch('/api/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newApplication),
+      });
+      await fetch(`/api/saved?no=${encodeURIComponent(job.no)}`, { method: 'DELETE' });
+    } catch { /* noop */ }
+
+    try {
+      const res = await fetch('/api/saved');
+      if (res.ok) {
+        const { jobs } = await res.json();
+        setLiveJobs(jobs);
+        setLocalAdditions([]);
+        setLocalEdits({});
+      }
+    } catch { /* noop */ }
   }
 
   async function handleDeleteJob(no: string) {
@@ -200,6 +260,7 @@ export default function SavedDashboard({ jobs: serverJobs, isDemo, spreadsheetUr
           onSort={handleSort}
           onEdit={setEditingJob}
           onDelete={handleDeleteJob}
+          onMoveToApplications={handleMoveToApplications}
         />
       </main>
 
