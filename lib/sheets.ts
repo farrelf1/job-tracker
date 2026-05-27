@@ -24,6 +24,11 @@ function requireSpreadsheetId(): string {
   return id;
 }
 
+export function getSpreadsheetUrl(): string | undefined {
+  const id = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
+  return id ? `https://docs.google.com/spreadsheets/d/${id}/edit` : undefined;
+}
+
 export async function fetchJobApplications(): Promise<JobApplication[]> {
   const spreadsheetId = requireSpreadsheetId();
   const auth = getAuth(['https://www.googleapis.com/auth/spreadsheets.readonly']);

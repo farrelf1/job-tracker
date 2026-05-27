@@ -10,11 +10,12 @@ import SavedEntryModal from './SavedEntryModal';
 interface SavedDashboardProps {
   jobs: SavedJob[];
   isDemo: boolean;
+  spreadsheetUrl?: string;
 }
 
 const CONTRACT_OPTIONS = ['Full Time', 'Intern', 'Contract', 'MT'] as const;
 
-export default function SavedDashboard({ jobs: serverJobs, isDemo }: SavedDashboardProps) {
+export default function SavedDashboard({ jobs: serverJobs, isDemo, spreadsheetUrl }: SavedDashboardProps) {
   const [liveJobs, setLiveJobs] = useState<SavedJob[]>(serverJobs);
   const [localAdditions, setLocalAdditions] = useState<SavedJob[]>([]);
   const [localEdits, setLocalEdits] = useState<Record<string, SavedJob>>({});
@@ -123,7 +124,7 @@ export default function SavedDashboard({ jobs: serverJobs, isDemo }: SavedDashbo
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header isDemo={isDemo} totalCount={allJobs.length} />
+      <Header isDemo={isDemo} totalCount={allJobs.length} spreadsheetUrl={spreadsheetUrl} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page heading */}

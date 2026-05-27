@@ -12,9 +12,10 @@ import AddEntryModal from './AddEntryModal';
 interface DashboardProps {
   jobs: JobApplication[];
   isDemo: boolean;
+  spreadsheetUrl?: string;
 }
 
-export default function Dashboard({ jobs: serverJobs, isDemo }: DashboardProps) {
+export default function Dashboard({ jobs: serverJobs, isDemo, spreadsheetUrl }: DashboardProps) {
   const [liveJobs, setLiveJobs] = useState<JobApplication[]>(serverJobs);
   const [localAdditions, setLocalAdditions] = useState<JobApplication[]>([]);
   const [localEdits, setLocalEdits] = useState<Record<string, JobApplication>>({});
@@ -131,7 +132,7 @@ export default function Dashboard({ jobs: serverJobs, isDemo }: DashboardProps) 
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header isDemo={isDemo} totalCount={allJobs.length} />
+      <Header isDemo={isDemo} totalCount={allJobs.length} spreadsheetUrl={spreadsheetUrl} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page heading + Add button */}

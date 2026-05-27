@@ -1,4 +1,4 @@
-import { fetchJobApplications } from '@/lib/sheets';
+import { fetchJobApplications, getSpreadsheetUrl } from '@/lib/sheets';
 import { mockJobs } from '@/lib/mockData';
 import Dashboard from '@/components/Dashboard';
 
@@ -18,5 +18,5 @@ export default async function Page() {
     // Credentials not configured — fall back to demo data
   }
 
-  return <Dashboard jobs={jobs} isDemo={isDemo} />;
+  return <Dashboard jobs={jobs} isDemo={isDemo} spreadsheetUrl={getSpreadsheetUrl()} />;
 }

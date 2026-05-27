@@ -2,14 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Briefcase } from 'lucide-react';
+import { Briefcase, Sheet } from 'lucide-react';
 
 interface HeaderProps {
   isDemo: boolean;
   totalCount: number;
+  spreadsheetUrl?: string;
 }
 
-export default function Header({ isDemo, totalCount }: HeaderProps) {
+export default function Header({ isDemo, totalCount, spreadsheetUrl }: HeaderProps) {
   const pathname = usePathname();
   const isSaved = pathname === '/saved';
 
@@ -59,6 +60,19 @@ export default function Header({ isDemo, totalCount }: HeaderProps) {
           {/* Right side */}
           <div className="flex items-center gap-4">
             <span className="text-sm text-slate-400 hidden sm:block">{countLabel}</span>
+
+            {spreadsheetUrl && (
+              <a
+                href={spreadsheetUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 transition-colors"
+                title="Open Google Sheet"
+              >
+                <Sheet size={14} className="text-emerald-600" strokeWidth={2.25} />
+                <span className="hidden sm:inline">Open Sheet</span>
+              </a>
+            )}
 
             {isDemo ? (
               <span className="text-xs font-semibold px-2.5 py-1 bg-amber-100 text-amber-700 rounded-full border border-amber-200">

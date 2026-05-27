@@ -1,4 +1,4 @@
-import { fetchSavedJobs } from '@/lib/sheets';
+import { fetchSavedJobs, getSpreadsheetUrl } from '@/lib/sheets';
 import { mockSavedJobs } from '@/lib/mockSavedJobs';
 import SavedDashboard from '@/components/SavedDashboard';
 
@@ -16,5 +16,5 @@ export default async function SavedPage() {
     // Credentials not configured — fall back to demo data
   }
 
-  return <SavedDashboard jobs={jobs} isDemo={isDemo} />;
+  return <SavedDashboard jobs={jobs} isDemo={isDemo} spreadsheetUrl={getSpreadsheetUrl()} />;
 }
