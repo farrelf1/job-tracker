@@ -145,9 +145,8 @@ export default function JobsTable({ jobs, sortField, onSort, onEdit, onDelete }:
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, x: -8 }}
                       transition={{ duration: 0.2, delay: Math.min(i * 0.035, 0.4) }}
-                      onClick={() => hasDetail && setExpandedId(isExpanded ? null : id)}
-                      className={`border-b border-slate-50 transition-colors group
-                        ${hasDetail ? 'cursor-pointer' : ''}
+                      onClick={() => setExpandedId(isExpanded ? null : id)}
+                      className={`border-b border-slate-50 transition-colors group cursor-pointer
                         ${isExpanded ? 'bg-indigo-50/40' : 'hover:bg-slate-50/60'}`}
                     >
                       <td className="pl-5 pr-2 py-3.5 text-slate-400 text-xs tabular-nums">{job.no}</td>
@@ -224,16 +223,14 @@ export default function JobsTable({ jobs, sortField, onSort, onEdit, onDelete }:
 
                           {/* Notes / details */}
                           <ActionSlot>
-                            {hasDetail && (
-                              <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); setExpandedId(isExpanded ? null : id); }}
-                                className={`transition-colors ${isExpanded ? 'text-indigo-500' : 'text-slate-400 hover:text-indigo-500'}`}
-                                title={isExpanded ? 'Hide details' : 'View details & notes'}
-                              >
-                                {isExpanded ? <ChevronUp size={15} /> : <FileText size={14} />}
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setExpandedId(isExpanded ? null : id); }}
+                              className={`transition-colors ${isExpanded ? 'text-indigo-500' : `text-slate-400 hover:text-indigo-500 ${hasDetail ? '' : 'opacity-0 group-hover:opacity-100'}`}`}
+                              title={isExpanded ? 'Hide details' : 'View full details'}
+                            >
+                              {isExpanded ? <ChevronUp size={15} /> : <FileText size={14} />}
+                            </button>
                           </ActionSlot>
 
                           {/* Edit / cancel-delete */}
@@ -287,7 +284,7 @@ export default function JobsTable({ jobs, sortField, onSort, onEdit, onDelete }:
 
                     {/* Expanded detail row */}
                     <AnimatePresence>
-                      {isExpanded && hasDetail && (
+                      {isExpanded && (
                         <motion.tr
                           key={`${id}-detail`}
                           initial={{ opacity: 0 }}
@@ -296,24 +293,34 @@ export default function JobsTable({ jobs, sortField, onSort, onEdit, onDelete }:
                           transition={{ duration: 0.18 }}
                         >
                           <td colSpan={9} className="bg-indigo-50/20 border-b border-indigo-100/60 px-8 py-5">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                              {job.interviewDetails && (
-                                <div>
-                                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
-                                    Interview Details
-                                  </p>
-                                  <p className="text-sm text-slate-700 leading-relaxed">{job.interviewDetails}</p>
-                                </div>
-                              )}
-                              {job.notes && (
-                                <div>
-                                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
-                                    Notes
-                                  </p>
-                                  <p className="text-sm text-slate-600 leading-relaxed">{job.notes}</p>
-                                </div>
-                              )}
+                            {/* Full role & company — always shown so truncated names stay readable */}
+                            <div className="mb-4 pb-4 border-b border-indigo-100/50">
+                              <p className="text-lg font-semibold text-slate-900 leading-snug">{job.roleTitle}</p>
+                              <p className="text-sm text-slate-500 mt-0.5">{job.company}</p>
                             </div>
+
+                            {hasDetail ? (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                {job.interviewDetails && (
+                                  <div>
+                                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+                                      Interview Details
+                                    </p>
+                                    <p className="text-sm text-slate-700 leading-relaxed">{job.interviewDetails}</p>
+                                  </div>
+                                )}
+                                {job.notes && (
+                                  <div>
+                                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+                                      Notes
+                                    </p>
+                                    <p className="text-sm text-slate-600 leading-relaxed">{job.notes}</p>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-slate-400 italic">No interview details or notes yet.</p>
+                            )}
                           </td>
                         </motion.tr>
                       )}
