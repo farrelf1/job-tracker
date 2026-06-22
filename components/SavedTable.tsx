@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowUpDown, ExternalLink,
@@ -19,20 +19,6 @@ interface Props {
   onMoveToApplications?: (job: SavedJob) => void;
 }
 
-const COLS = ['no', 'roleTitle', 'company', 'contract', 'jobLink', 'deadline', 'notes', 'actions'] as const;
-type ColKey = typeof COLS[number];
-
-const DEFAULT_WIDTHS: Record<ColKey, number> = {
-  no: 52,
-  roleTitle: 230,
-  company: 170,
-  contract: 120,
-  jobLink: 160,
-  deadline: 130,
-  notes: 240,
-  actions: 170,
-};
-
 function SortIcon({ active }: { active: boolean }) {
   return (
     <ArrowUpDown
@@ -42,51 +28,14 @@ function SortIcon({ active }: { active: boolean }) {
   );
 }
 
-function ResizeHandle({ col, onStart }: { col: ColKey; onStart: (col: ColKey, e: React.MouseEvent) => void }) {
-  return (
-    <div
-      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize group/handle flex items-center justify-center z-10"
-      onMouseDown={(e) => { e.stopPropagation(); onStart(col, e); }}
-    >
-      <div className="w-px h-4 bg-slate-200 group-hover/handle:bg-indigo-400 group-hover/handle:h-full transition-all" />
-    </div>
-  );
+/** Fixed-size slot so every action lines up across rows, even when empty. */
+function ActionSlot({ children }: { children?: React.ReactNode }) {
+  return <div className="w-7 h-7 flex items-center justify-center">{children}</div>;
 }
 
-export default function SavedTable({ jobs, sortField, sortDir, onSort, onEdit, onDelete, onMoveToApplications }: Props) {
+export default function SavedTable({ jobs, sortField, onSort, onEdit, onDelete, onMoveToApplications }: Props) {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [movingId, setMovingId] = useState<string | null>(null);
-  const [colWidths, setColWidths] = useState<Record<ColKey, number>>(DEFAULT_WIDTHS);
-  const [isResizing, setIsResizing] = useState(false);
-  const resizingCol = useRef<ColKey | null>(null);
-  const resizeStartX = useRef(0);
-  const resizeStartWidth = useRef(0);
-
-  function startResize(col: ColKey, e: React.MouseEvent) {
-    e.preventDefault();
-    resizingCol.current = col;
-    resizeStartX.current = e.clientX;
-    resizeStartWidth.current = colWidths[col];
-    setIsResizing(true);
-
-    function onMouseMove(ev: MouseEvent) {
-      if (!resizingCol.current) return;
-      setColWidths((prev) => ({
-        ...prev,
-        [resizingCol.current!]: Math.max(60, resizeStartWidth.current + (ev.clientX - resizeStartX.current)),
-      }));
-    }
-    function onMouseUp() {
-      resizingCol.current = null;
-      setIsResizing(false);
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-    }
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-  }
-
-  const totalWidth = COLS.reduce((sum, col) => sum + colWidths[col], 0);
 
   if (jobs.length === 0) {
     return (
@@ -97,7 +46,7 @@ export default function SavedTable({ jobs, sortField, sortDir, onSort, onEdit, o
       >
         <Bookmark size={32} className="text-slate-300 mx-auto mb-3" />
         <p className="text-slate-400 font-medium">No saved vacancies yet</p>
-        <p className="text-slate-300 text-sm mt-1">Click "Save Vacancy" to start your wishlist</p>
+        <p className="text-slate-300 text-sm mt-1">Click &ldquo;Save Vacancy&rdquo; to start your wishlist</p>
       </motion.div>
     );
   }
@@ -109,50 +58,57 @@ export default function SavedTable({ jobs, sortField, sortDir, onSort, onEdit, o
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
       className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
     >
-      <div className={`overflow-x-auto ${isResizing ? 'cursor-col-resize select-none' : ''}`}>
-        <table className="text-sm" style={{ tableLayout: 'fixed', width: `${totalWidth}px` }}>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[1040px] text-sm table-fixed">
           <colgroup>
-            {COLS.map((col) => (
-              <col key={col} style={{ width: `${colWidths[col]}px` }} />
-            ))}
+            <col className="w-12" />
+            {/* Role Title */}
+            <col />
+            {/* Company */}
+            <col />
+            <col className="w-28" />
+            <col className="w-44" />
+            <col className="w-32" />
+            {/* Notes */}
+            <col />
+            <col className="w-44" />
           </colgroup>
 
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50/70">
-              <th className="relative pl-5 pr-2 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                #<ResizeHandle col="no" onStart={startResize} />
+              <th className="pl-5 pr-2 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                #
               </th>
               <th
-                className="relative px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide cursor-pointer select-none hover:text-slate-800 transition-colors"
+                className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide cursor-pointer select-none hover:text-slate-800 transition-colors"
                 onClick={() => onSort('roleTitle')}
               >
                 <span className="flex items-center">Role Title <SortIcon active={sortField === 'roleTitle'} /></span>
-                <ResizeHandle col="roleTitle" onStart={startResize} />
               </th>
               <th
-                className="relative px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide cursor-pointer select-none hover:text-slate-800 transition-colors"
+                className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide cursor-pointer select-none hover:text-slate-800 transition-colors"
                 onClick={() => onSort('company')}
               >
                 <span className="flex items-center">Company <SortIcon active={sortField === 'company'} /></span>
-                <ResizeHandle col="company" onStart={startResize} />
               </th>
-              <th className="relative px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                Contract<ResizeHandle col="contract" onStart={startResize} />
+              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                Contract
               </th>
-              <th className="relative px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                Link<ResizeHandle col="jobLink" onStart={startResize} />
+              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                Link
               </th>
               <th
-                className="relative px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide cursor-pointer select-none hover:text-slate-800 transition-colors"
+                className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide cursor-pointer select-none hover:text-slate-800 transition-colors"
                 onClick={() => onSort('deadline')}
               >
                 <span className="flex items-center">Deadline <SortIcon active={sortField === 'deadline'} /></span>
-                <ResizeHandle col="deadline" onStart={startResize} />
               </th>
-              <th className="relative px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                Notes<ResizeHandle col="notes" onStart={startResize} />
+              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                Notes
               </th>
-              <th className="relative px-4 py-3">&nbsp;</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide pr-5">
+                Actions
+              </th>
             </tr>
           </thead>
 
@@ -196,7 +152,7 @@ export default function SavedTable({ jobs, sortField, sortDir, onSort, onEdit, o
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 transition-colors overflow-hidden"
+                          className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 transition-colors overflow-hidden max-w-full"
                           title={job.jobLink}
                         >
                           <ExternalLink size={11} className="shrink-0" />
@@ -224,8 +180,9 @@ export default function SavedTable({ jobs, sortField, sortDir, onSort, onEdit, o
                       </span>
                     </td>
 
+                    {/* Actions — Apply button + fixed icon slots kept aligned across rows */}
                     <td className="px-4 py-3.5 pr-5">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1.5">
                         {onMoveToApplications && (
                           <button
                             type="button"
@@ -245,45 +202,52 @@ export default function SavedTable({ jobs, sortField, sortDir, onSort, onEdit, o
                             {movingId === id ? 'Moving…' : 'Apply'}
                           </button>
                         )}
-                        {onEdit && (
-                          <button
-                            type="button"
-                            onClick={() => onEdit(job)}
-                            className="text-slate-300 hover:text-indigo-500 transition-colors opacity-0 group-hover:opacity-100"
-                            title="Edit"
-                          >
-                            <Pencil size={13} />
-                          </button>
-                        )}
-                        {onDelete && pendingDeleteId === id ? (
-                          <>
+
+                        {/* Edit / cancel-delete */}
+                        <ActionSlot>
+                          {onDelete && pendingDeleteId === id ? (
                             <button
                               type="button"
                               onClick={() => setPendingDeleteId(null)}
                               className="text-slate-400 hover:text-slate-600 transition-colors"
                               title="Cancel"
                             >
-                              <X size={13} />
+                              <X size={15} />
                             </button>
+                          ) : onEdit ? (
+                            <button
+                              type="button"
+                              onClick={() => onEdit(job)}
+                              className="text-slate-400 hover:text-indigo-500 transition-colors opacity-0 group-hover:opacity-100"
+                              title="Edit"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                          ) : null}
+                        </ActionSlot>
+
+                        {/* Delete / confirm-delete */}
+                        <ActionSlot>
+                          {onDelete && pendingDeleteId === id ? (
                             <button
                               type="button"
                               onClick={() => { onDelete(job.no); setPendingDeleteId(null); }}
                               className="text-red-500 hover:text-red-600 transition-colors"
                               title="Confirm delete"
                             >
-                              <Check size={13} />
+                              <Check size={15} />
                             </button>
-                          </>
-                        ) : onDelete ? (
-                          <button
-                            type="button"
-                            onClick={() => setPendingDeleteId(id)}
-                            className="text-slate-300 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
-                            title="Delete"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        ) : null}
+                          ) : onDelete ? (
+                            <button
+                              type="button"
+                              onClick={() => setPendingDeleteId(id)}
+                              className="text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                              title="Delete"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          ) : null}
+                        </ActionSlot>
                       </div>
                     </td>
                   </motion.tr>
@@ -298,7 +262,6 @@ export default function SavedTable({ jobs, sortField, sortDir, onSort, onEdit, o
         <p className="text-xs text-slate-400">
           {jobs.length} saved vacanc{jobs.length !== 1 ? 'ies' : 'y'}
         </p>
-        <p className="text-xs text-slate-300 hidden sm:block">Drag column edges to resize</p>
       </div>
     </motion.div>
   );
